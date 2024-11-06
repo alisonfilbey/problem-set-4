@@ -1,7 +1,7 @@
 ---
-title: "30538 Problem Set 5:  "
+title: "30538 Problem Set 5: Web Scraping "
 author: "Alison Filbey"
-date: "2024-10-23"
+date: "today"
 format: 
   pdf:
     include-in-header: 
@@ -17,144 +17,109 @@ include-before-body:
       breaklines
     }
 ---
-1. "This submission is my work alone and complies with the 30538 integrity
-policy." Add your initials to indicate your agreement: \*\*AF\*\*
-2. "I have uploaded the names of anyone I worked with on the problem set [here](https://docs.google.com/forms/d 1-zzHx762odGlpVWtgdIC55vqF-j3gqdAp6Pno1rIGK0/edit)" \*\*AF\*\* (1 point)
-3. Late coins used this pset:  \*\*0\*\*  Late coins left after submission: \*\*4\*\* 
-4. Knit your ps3_solo.qmd as a pdf.
-5. Push ps3_solo.qmd and ps3_solo.pdf to your github repo. Use command line git (not github desktop)
-6. Submit ps3_solo.pdf through the Problem Set 3 Solo assignment on Gradescope. (4 points)
-7. Tag your submission in Gradescope
-# SOLO 
 
-## Learn git branching (15 points)
-Go to https://learngitbranching.js.org. This is the best visual git explainer we know of.
+## Submission Steps (10 pts)
+1. This problem set is a paired problem set.
+2. Play paper, scissors, rock to determine who goes first. Call that person Partner 1.
+• Partner 1 (name and cnet ID): afilbey
+• Partner 2 (name and cnet ID):
+3. Partner 1 will accept the ps5 and then share the link it creates with their partner. You
+can only share it with one partner so you will not be able to change it after your partner
+has accepted.
+4. “This submission is our work alone and complies with the 30538 integrity policy.” Add
+your initials to indicate your agreement: **AF** **CC**
+5. “I have uploaded the names of anyone else other than my partner and I worked with on
+the problem set here” (1 point)**AF** **CC**
+6. Late coins used this pset: **__** Late coins left after submission: **__**
+7. Knit your ps5.qmd to an PDF file to make ps5.pdf,
+• The PDF should not be more than 25 pages. Use head() and re-size figures when
+appropriate.
+8. (Partner 1): push ps5.qmd and ps5.pdf to your github repo.
+9. (Partner 1): submit ps5.pdf via Gradescope. Add your partner on Gradescope.
+10. (Partner 1): tag your submission in Gradescop
 
-1. Complete all the levels of main "Introduction Sequence". Report the commands needed to complete "Git rebase" with one line per command. 
-```{bash} 
-git checkout -b bugFix
-git commit
-git checkout main
-git commit
-git checkout bugFix
-git rebase main
+
+
+## Step 1: Develop initial scraper and crawler
+
+```{python}
+#libraries
+import pandas as pd
+import altair as alt
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 ```
 
-2. Complete all the levels of main "Ramping up". Report the commands needed to complete "Reversing changes in git" with one line per command. 
-```{bash} 
-git reset HEAD~1
-git checkout pushed
-git revert HEAD
+1. (Partner 1) Scraping: Go to the first page of the HHS OIG’s “Enforcement Actions”
+page and scrape and collect the following into a dataset:
+• Title of the enforcement action
+• Date
+• Category (e.g, “Criminal and Civil Actions”)
+• Link associated with the enforcement action
+Collect your output into a tidy dataframe and print its head.
+
+```{python}
+url ='https://oig.hhs.gov/fraud/enforcement/'
+response = requests.get(url)
+soup = BeautifulSoup(response.text, 'lxml')
+
+#Title 
+h2 = soup.find_all('h2')
+title = []
+for h2 in h2:
+   title.append(h2.get_text(strip=True))
+title=title[2:22]
+
+#Date
+span = soup.find_all('span', class_='text-base-dark padding-right-105')
+date = []
+for span in span:
+   date.append(span.get_text(strip=True))
+
+#Classification
+listed = soup.find_all('li', class_='display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1')
+classification = []
+for element in listed:
+    text = element.get_text(strip=True)
+    classification.append(str(text))
+
+#Link
+a_tags = soup.find_all('a')
+links = []
+for a in a_tags:
+    if 'href' in a.attrs and a['href']:
+        link = a['href']
+        links.append(link)  
+
+links=links[74:94]
+short_url = 'https://oig.hhs.gov'
+links = [ short_url + link for link in links]
+
+enforcement_actions = {
+    'Title': title,
+    'Date': date,
+    'Classification': classification,
+    'URL': links
+}
+
+enforcement_actions = pd.DataFrame(enforcement_actions)
+enforcement_actions.head()
 ```
 
-3. Complete all the levels of remote "Push & Pull -- Git Remotes!". Report the commands needed to complete "Locked Main" with one line per command.
-```{bash} 
-git checkout -b feature
-git push
-git branch -f main HEAD~1
-```
+2. Crawling: Then for each enforcement action, click the link and collect the name of the agency involved (e.g., for this link, it would be U.S. Attorney’s Office, Eastern District of Washington). Update your dataframe with the name of the agency and print its head
 
-## Exercises
+```{python}
+agency = []
+for crawl_url in enforcement_actions['URL']:
+  response = requests.get(crawl_url)
+  soup = BeautifulSoup(response.text, 'lxml')
+  span = soup.find('span', string=lambda text: text and 'Agency:' in text)
+  if span:
+    agency_name = span.find_next_sibling(text=True).strip()
+    agency.append(agency_name)
+  else:
+     None
 
-- Basic Staging and Branching (10-15)
-1. [Exercise](source setup.sh). For your pset submission, tell us only the answer to the last question (22).
-```
-On branch master
-Your branch is ahead of 'origin/master' by 2 commits.
-  (use "git push" to publish your local commits)
-
-nothing to commit, working tree clean
-
-```
-
-2. [Exercise](.\setup.ps1). For your pset submission, tell us only the output to the last question (18).
-```
-Switched to branch 'mybranch'
-PS C:\Users\aliso\OneDrive\Documents\Second Year First Quarter\Python II\git-katas\basic-branching> git diff mybranch master
-diff --git a/basic-branching/file1.txt b/basic-branching/file1.txt
-deleted file mode 100644
-index ca90535..0000000
-Binary files a/basic-branching/file1.txt and /dev/null differ
-diff --git a/basic-branching/file2.txt b/basic-branching/file2.txt
-new file mode 100644
-index 0000000..9bd098d
-Binary files /dev/null and b/basic-branching/file2.txt differ
-```
-
-- Merging 
-1. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/ff-merge/README.md). After completing all the steps (1 through 12), run git log --oneline --graph --all and report the output.
-```
-
-$ git log --oneline --graph --all
-* ff44139 (HEAD -> master, feature/uppercase) Uppercase
-* d90a831 Add content to greeting.txt
-* 2bbe7e1 Add file greeting.txt
-
-```
-
-2. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/3-way-merge/README.md). Report the answer to step 11.
-```
-$ git log --oneline --graph --all
-*   783b790 (HEAD -> master) Merging
-|\  
-| * 0666cfb (greeting) Updated
-* | 9a0a6cc Read me
-|/
-* 18c6475 Add content to greeting.txt
-* 66bf452 Add file greeting.txt
-```
-
-3. Identify the type of merge used in Q1 and Q2 of this exercise. In words, explain the difference between the two merge types, and describe scenarios where each type would be most appropriate.
-
-The type of merge used in Q1 is a fast forward merge and in Q2 a three way merged was used. In a fast forward merge, you move the main branch to the newly created branch by just directly following the path of the new branch. This works when our new branch grew out of our main branch so we can easily move the main branch to the new branch. In a three way merge, you must resolve discrepancies before you merge. Typically commits were made seperately to the same branch and the branch has a divergent work history, therefore the two diveregent branches and the main branch need to be reconciled. You must resolve the changes before merging. 
-
-
-- Undo, Clean, and Ignore
-1. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/basic-revert/README.md). Report the answer to step 13.
-```
-commit 3831d248a65a09527061bbec0a40e35c6217171b (HEAD -> master)
-Author: alisonfilbey <164252067+alisonfilbey@users.noreply.github.com>
-Date:   Wed Oct 23 10:57:54 2024 -0500
-
-    Revert "Add credentials to repository"
-
-    This reverts commit a081d46f66836910e898fe73d586cbaa19909fdb.
-
-diff --git a/credentials.txt b/credentials.txt
-deleted file mode 100644
-index 8995708..0000000
---- a/credentials.txt
-+++ /dev/null
-@@ -1 +0,0 @@
--supersecretpassword
-
-```
-
-2. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/basic-cleaning/README.md). Look up `git clean` since we haven't seen this before. For context, this example is about cleaning up compiled C code, but the same set of issues apply to random files generated by knitting a document or by compiling in Python. Report the terminal output from step 7. 
-
-```
-$ git clean -f -d
-Removing README.txt~
-Removing obj/
-Removing src/myapp.c~
-Removing src/oldfile.c~
-```
-
-3. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/ignore/README.md). Report the answer to 15 ("What does git status say?") 
-```
-$ git status
-On branch master
-Changes to be committed:
-  (use "git restore --staged <file>..." to unstage)
-        deleted:    file1.txt
-
-Changes not staged for commit:
-  (use "git add <file>..." to update what will be committed)
-  (use "git restore <file>..." to discard changes in working directory)
-        modified:   .gitignore
-
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-        file3.txt
-
+enforcement_actions['Agency'] = agency
 ```
