@@ -1,6 +1,6 @@
 ---
 title: "30538 Problem Set 5: Web Scraping "
-author: "Alison Filbey"
+author: "Alison Filbey and Claire Conzelmann"
 date: "today"
 format: 
   pdf:
@@ -21,8 +21,8 @@ include-before-body:
 ## Submission Steps (10 pts)
 1. This problem set is a paired problem set.
 2. Play paper, scissors, rock to determine who goes first. Call that person Partner 1.
-• Partner 1 (name and cnet ID): afilbey
-• Partner 2 (name and cnet ID):
+• Partner 1 (name and cnet ID): Alison Filbey afilbey
+• Partner 2 (name and cnet ID): Claire Conzelmann cconzelmann
 3. Partner 1 will accept the ps5 and then share the link it creates with their partner. You
 can only share it with one partner so you will not be able to change it after your partner
 has accepted.
@@ -49,6 +49,9 @@ import altair as alt
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import shapely
+from shapely import Polygon, Point
+import geopandas as gpd
 ```
 
 1. (Partner 1) Scraping: Go to the first page of the HHS OIG’s “Enforcement Actions”
@@ -122,4 +125,106 @@ for crawl_url in enforcement_actions['URL']:
      None
 
 enforcement_actions['Agency'] = agency
+```
+
+# Step 2: Making the scraper dynamic
+
+### 1. Turning the scraper into a function 
+
+* a. Pseudo-Code (PARTNER 2)
+
+
+* b. Create Dynamic Scraper (PARTNER 2)
+
+```{python}
+
+```
+
+* c. Test Partner's Code (PARTNER 1)
+
+```{python}
+
+```
+
+## Step 3: Plot data based on scraped data
+
+### 1. Plot the number of enforcement actions over time (PARTNER 2)
+
+```{python}
+
+```
+
+### 2. Plot the number of enforcement actions categorized: (PARTNER 1)
+
+* based on "Criminal and Civil Actions" vs. "State Enforcement Agencies"
+
+```{python}
+
+```
+
+* based on five topics
+
+```{python}
+
+```
+
+## Step 4: Create maps of enforcement activity
+
+### 1. Map by State (PARTNER 1)
+
+```{python}
+
+```
+
+
+### 2. Map by District (PARTNER 2)
+
+```{python}
+
+```
+
+## Extra Credit
+
+### 1. Merge zip code shapefile with population
+```{python}
+#import zipcode shapefile
+zipcode_shapefile = "/Users/claireconzelmann/Documents/GitHub/Python2/problem-set-4-alison-and-claire/Data/gz_2010_us_860_00_500k.shp"
+zipcodes_sp = gpd.read_file(zipcode_shapefile)
+
+#import zipcode population file
+zip_pop = pd.read_csv("/Users/claireconzelmann/Downloads/DECENNIALDHC2020.P1_2024-11-05T221849/DECENNIALDHC2020.P1-Data.csv")
+
+#import district shapefile
+district_shapefile = "/Users/claireconzelmann/Downloads/US Attorney Districts Shapefile simplified_20241105/geo_export_31250f05-1141-499d-9d2a-48d87472e3a4.shp"
+districts_sp = gpd.read_file(district_shapefile)
+```
+
+```{python}
+#create zipcode variable
+zip_pop = zip_pop.drop(index=0).reset_index(drop=True)
+zip_pop["ZCTA5"] = zip_pop["GEO_ID"].str[-5:].astype(int).astype(str)
+
+#change zipcode to integer
+zipcodes_sp["ZCTA5"] = zipcodes_sp["ZCTA5"].astype(int).astype(str)
+
+#merge population counts to zipcode shapefile
+zipcodes_sp = pd.merge(zipcodes_sp, zip_pop, on=["ZCTA5"], how="left")
+```
+
+### 2. Conduct spatial join
+```{python}
+#spatial join districts to zipcodes
+zipcodes_to_districts = gpd.sjoin(zipcodes_sp, 
+  districts_sp, how="inner", predicate="intersects")
+
+#recast population as integer
+zipcodes_to_districts["P1_001N"] = zipcodes_to_districts["P1_001N"].fillna(0).astype(int)
+
+#aggregate zipcode population to districts
+district_pops = zipcodes_to_districts.groupby(["district_n"])["P1_001N"].sum().reset_index()
+```
+
+### 3. Map the action ratio in each district
+```{python}
+
 ```
