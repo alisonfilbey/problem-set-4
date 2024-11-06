@@ -1,0 +1,160 @@
+---
+title: "30538 Problem Set 5:  "
+author: "Alison Filbey"
+date: "2024-10-23"
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+include-before-body:
+  text: |
+    \RecustomVerbatimEnvironment{verbatim}{Verbatim}{
+      showspaces = false,
+      showtabs = false,
+      breaksymbolleft={},
+      breaklines
+    }
+---
+1. "This submission is my work alone and complies with the 30538 integrity
+policy." Add your initials to indicate your agreement: \*\*AF\*\*
+2. "I have uploaded the names of anyone I worked with on the problem set [here](https://docs.google.com/forms/d 1-zzHx762odGlpVWtgdIC55vqF-j3gqdAp6Pno1rIGK0/edit)" \*\*AF\*\* (1 point)
+3. Late coins used this pset:  \*\*0\*\*  Late coins left after submission: \*\*4\*\* 
+4. Knit your ps3_solo.qmd as a pdf.
+5. Push ps3_solo.qmd and ps3_solo.pdf to your github repo. Use command line git (not github desktop)
+6. Submit ps3_solo.pdf through the Problem Set 3 Solo assignment on Gradescope. (4 points)
+7. Tag your submission in Gradescope
+# SOLO 
+
+## Learn git branching (15 points)
+Go to https://learngitbranching.js.org. This is the best visual git explainer we know of.
+
+1. Complete all the levels of main "Introduction Sequence". Report the commands needed to complete "Git rebase" with one line per command. 
+```{bash} 
+git checkout -b bugFix
+git commit
+git checkout main
+git commit
+git checkout bugFix
+git rebase main
+```
+
+2. Complete all the levels of main "Ramping up". Report the commands needed to complete "Reversing changes in git" with one line per command. 
+```{bash} 
+git reset HEAD~1
+git checkout pushed
+git revert HEAD
+```
+
+3. Complete all the levels of remote "Push & Pull -- Git Remotes!". Report the commands needed to complete "Locked Main" with one line per command.
+```{bash} 
+git checkout -b feature
+git push
+git branch -f main HEAD~1
+```
+
+## Exercises
+
+- Basic Staging and Branching (10-15)
+1. [Exercise](source setup.sh). For your pset submission, tell us only the answer to the last question (22).
+```
+On branch master
+Your branch is ahead of 'origin/master' by 2 commits.
+  (use "git push" to publish your local commits)
+
+nothing to commit, working tree clean
+
+```
+
+2. [Exercise](.\setup.ps1). For your pset submission, tell us only the output to the last question (18).
+```
+Switched to branch 'mybranch'
+PS C:\Users\aliso\OneDrive\Documents\Second Year First Quarter\Python II\git-katas\basic-branching> git diff mybranch master
+diff --git a/basic-branching/file1.txt b/basic-branching/file1.txt
+deleted file mode 100644
+index ca90535..0000000
+Binary files a/basic-branching/file1.txt and /dev/null differ
+diff --git a/basic-branching/file2.txt b/basic-branching/file2.txt
+new file mode 100644
+index 0000000..9bd098d
+Binary files /dev/null and b/basic-branching/file2.txt differ
+```
+
+- Merging 
+1. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/ff-merge/README.md). After completing all the steps (1 through 12), run git log --oneline --graph --all and report the output.
+```
+
+$ git log --oneline --graph --all
+* ff44139 (HEAD -> master, feature/uppercase) Uppercase
+* d90a831 Add content to greeting.txt
+* 2bbe7e1 Add file greeting.txt
+
+```
+
+2. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/3-way-merge/README.md). Report the answer to step 11.
+```
+$ git log --oneline --graph --all
+*   783b790 (HEAD -> master) Merging
+|\  
+| * 0666cfb (greeting) Updated
+* | 9a0a6cc Read me
+|/
+* 18c6475 Add content to greeting.txt
+* 66bf452 Add file greeting.txt
+```
+
+3. Identify the type of merge used in Q1 and Q2 of this exercise. In words, explain the difference between the two merge types, and describe scenarios where each type would be most appropriate.
+
+The type of merge used in Q1 is a fast forward merge and in Q2 a three way merged was used. In a fast forward merge, you move the main branch to the newly created branch by just directly following the path of the new branch. This works when our new branch grew out of our main branch so we can easily move the main branch to the new branch. In a three way merge, you must resolve discrepancies before you merge. Typically commits were made seperately to the same branch and the branch has a divergent work history, therefore the two diveregent branches and the main branch need to be reconciled. You must resolve the changes before merging. 
+
+
+- Undo, Clean, and Ignore
+1. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/basic-revert/README.md). Report the answer to step 13.
+```
+commit 3831d248a65a09527061bbec0a40e35c6217171b (HEAD -> master)
+Author: alisonfilbey <164252067+alisonfilbey@users.noreply.github.com>
+Date:   Wed Oct 23 10:57:54 2024 -0500
+
+    Revert "Add credentials to repository"
+
+    This reverts commit a081d46f66836910e898fe73d586cbaa19909fdb.
+
+diff --git a/credentials.txt b/credentials.txt
+deleted file mode 100644
+index 8995708..0000000
+--- a/credentials.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-supersecretpassword
+
+```
+
+2. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/basic-cleaning/README.md). Look up `git clean` since we haven't seen this before. For context, this example is about cleaning up compiled C code, but the same set of issues apply to random files generated by knitting a document or by compiling in Python. Report the terminal output from step 7. 
+
+```
+$ git clean -f -d
+Removing README.txt~
+Removing obj/
+Removing src/myapp.c~
+Removing src/oldfile.c~
+```
+
+3. [Exercise](https://github.com/eficode-academy/git-katas/blob/master/ignore/README.md). Report the answer to 15 ("What does git status say?") 
+```
+$ git status
+On branch master
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        deleted:    file1.txt
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   .gitignore
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        file3.txt
+
+```
