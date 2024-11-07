@@ -169,9 +169,7 @@ def dynamic_scraper(year, month):
   date = []
   classification = []
   links = []
-  title_iter = []
-  classification_iter = []
-  link_iter = []
+  agency = []
 
   #set short url to append to url in loop
   short_url = 'https://oig.hhs.gov'
@@ -182,9 +180,8 @@ def dynamic_scraper(year, month):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     
-    #get out of loop if there is no page
+    #get out of loop if there is no page to scrape
     if not soup:
-      print(len(date))
       break
     
     #find all necessary tags on given page
@@ -203,7 +200,8 @@ def dynamic_scraper(year, month):
         return pd.DataFrame({"Title": title, 
                             "Date": date,
                             "Classification": classification, 
-                            "URL": links})
+                            "URL": links,
+                            "Agency" : agency})
 
       #extract date and append to date column
       date.append(span_tags[i].get_text(strip=True))
@@ -217,7 +215,22 @@ def dynamic_scraper(year, month):
       if 'href' in a_tags[i].attrs and a_tags[i]['href']:
         link = a_tags[i]['href']
         link = short_url + link
-        links.append(link)  
+        links.append(link)
+
+      #crawl through url and extract tags again 
+      response_crawl = requests.get(link)
+      soup_crawl = BeautifulSoup(response_crawl.text, 'lxml')
+      span_crawl = soup_crawl.find("span", 
+        string=lambda text: text and "Agency:" in text)
+      
+      #extract agency name from crawled tags
+      if span_crawl:
+        agency_name = span_crawl.find_next_sibling(string=True).strip()
+        agency.append(agency_name)
+      #add empty agency name if there is none
+      else:
+        agency_name = ""
+        agency.append(agency_name)
 
     page += 1
       
@@ -227,7 +240,8 @@ def dynamic_scraper(year, month):
   return pd.DataFrame({"Title": title, 
                       "Date": date,
                       "Classification": classification, 
-                      "URL": links})
+                      "URL": links,
+                      "Agency": agency})
 ```
 
 ```{python}
@@ -239,6 +253,7 @@ enforcement_actions_012023 = dynamic_scraper(2023, 1)
 #get info on tested function
 print(len(enforcement_actions_012023))
 
+#convert date to datetime so we can calculate the minimum
 enforcement_actions_012023["Date_obj"] = pd.to_datetime(
   enforcement_actions_012023["Date"], format="%B %d, %Y")
 
@@ -247,7 +262,7 @@ min_date = min(enforcement_actions_012023["Date_obj"])
 enforcement_actions_012023.loc[enforcement_actions_012023["Date_obj"] == min_date]
 ```
 
-There are 1,507 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, and url that was scraped for this enforcement action is listed above. 
+There are 1,507 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, agency, and url that was scraped for this enforcement action is listed above. 
 
 * c. Test Partner's Code (PARTNER 1)
 
