@@ -235,7 +235,7 @@ def dynamic_scraper(year, month):
                             "Agency" : agency})
         
         #write csv
-        file_name = "Data/enforcement_actions_" + str(year) + str(month) + ".csv"
+        file_name = "Data/enforcement_actions_" + str(year) + "_" + str(month) + ".csv"
         df.to_csv(file_name)
 
         #exit function
@@ -272,7 +272,7 @@ def dynamic_scraper(year, month):
                     "Agency" : agency})
         
   #write csv
-  file_name = "Data/enforcement_actions_" + str(year) + str(month) + ".csv"
+  file_name = "Data/enforcement_actions_" + str(year) + "_" + str(month) + ".csv"
   df.to_csv(file_name)
 
   return df
