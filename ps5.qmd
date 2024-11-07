@@ -54,6 +54,7 @@ from shapely import Polygon, Point
 import geopandas as gpd
 import time
 from datetime import datetime 
+from concurrent.futures import ThreadPoolExecutor
 ```
 
 1. (Partner 1) Scraping: Go to the first page of the HHS OIG’s “Enforcement Actions”
@@ -149,9 +150,33 @@ enforcement_actions.head()
 
 
 * b. Create Dynamic Scraper (PARTNER 2)
+I originally included the crawling in my for loop within the function. This was taking a really long time to run. I pasted my code into ChatGPT and asked how to make it run faster. It suggested I create a separate function for the crawling and use ThreadPoolExecutor.
 
 ```{python}
+#function to crawl extracted links and get agency name
+def fetch_agency_name(link):
+    """
+    Takes a link as an input and fetches the agency name from the given link
+    """
+
+    #get url to craawl
+    short_url = "https://oig.hhs.gov"
+    if not link.startswith("http"):
+        full_link = short_url + link
+    else:
+        full_link = link
+
+    response = requests.get(full_link)
+
+    #crawl the link that is extracted on the main page and extract agency name
+    soup_crawl = BeautifulSoup(response.text, "lxml")
+    span_crawl = soup_crawl.find("span", 
+      string=lambda text: text and "Agency:" in text)
+    return span_crawl.find_next_sibling(string=True).strip() if span_crawl else ""
+
+#main scraping function to scrape oig website through specified date
 def dynamic_scraper(year, month):
+
   #create datetime object from year and month
   date_obj = datetime(year, month, 1)
 
@@ -197,11 +222,24 @@ def dynamic_scraper(year, month):
         
       #stop scraping if date is outside the range
       if full_date < date_obj:
-        return pd.DataFrame({"Title": title, 
+
+        #fetch agency names before exiting the loop
+        with ThreadPoolExecutor(max_workers=5) as executor:
+          agency = list(executor.map(fetch_agency_name, links))
+
+        #write dataframe
+        df = pd.DataFrame({"Title": title, 
                             "Date": date,
                             "Classification": classification, 
                             "URL": links,
                             "Agency" : agency})
+        
+        #write csv
+        file_name = "Data/enforcement_actions_" + str(year) + str(month) + ".csv"
+        df.to_csv(file_name)
+
+        #exit function
+        return df
 
       #extract date and append to date column
       date.append(span_tags[i].get_text(strip=True))
@@ -217,31 +255,27 @@ def dynamic_scraper(year, month):
         link = short_url + link
         links.append(link)
 
-      #crawl through url and extract tags again 
-      response_crawl = requests.get(link)
-      soup_crawl = BeautifulSoup(response_crawl.text, 'lxml')
-      span_crawl = soup_crawl.find("span", 
-        string=lambda text: text and "Agency:" in text)
-      
-      #extract agency name from crawled tags
-      if span_crawl:
-        agency_name = span_crawl.find_next_sibling(string=True).strip()
-        agency.append(agency_name)
-      #add empty agency name if there is none
-      else:
-        agency_name = ""
-        agency.append(agency_name)
-
     page += 1
       
     #delay
     time.sleep(1)
 
-  return pd.DataFrame({"Title": title, 
-                      "Date": date,
-                      "Classification": classification, 
-                      "URL": links,
-                      "Agency": agency})
+  #fetch agency names in parallel
+  with ThreadPoolExecutor(max_workers=5) as executor:
+    agency = list(executor.map(fetch_agency_name, links))
+
+  #write dataframe
+  df = pd.DataFrame({"Title": title, 
+                    "Date": date,
+                    "Classification": classification, 
+                    "URL": links,
+                    "Agency" : agency})
+        
+  #write csv
+  file_name = "Data/enforcement_actions_" + str(year) + str(month) + ".csv"
+  df.to_csv(file_name)
+
+  return df
 ```
 
 ```{python}
@@ -262,11 +296,12 @@ min_date = min(enforcement_actions_012023["Date_obj"])
 enforcement_actions_012023.loc[enforcement_actions_012023["Date_obj"] == min_date]
 ```
 
-There are 1,507 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, agency, and url that was scraped for this enforcement action is listed above. 
+There are 1,510 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, agency, and url that was scraped for this enforcement action is listed above. 
 
 * c. Test Partner's Code (PARTNER 1)
 
 ```{python}
+enforcement_actions_012021 = dynamic_scraper(2021, 1)
 ```
 
 ## Step 3: Plot data based on scraped data
