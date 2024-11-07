@@ -52,6 +52,8 @@ from urllib.parse import urljoin
 import shapely
 from shapely import Polygon, Point
 import geopandas as gpd
+import time
+from datetime import datetime 
 ```
 
 1. (Partner 1) Scraping: Go to the first page of the HHS OIG’s “Enforcement Actions”
@@ -97,7 +99,7 @@ for a in a_tags:
 
 links=links[74:94]
 short_url = 'https://oig.hhs.gov'
-links = [ short_url + link for link in links]
+links = [short_url + link for link in links]
 
 enforcement_actions = {
     'Title': title,
@@ -125,6 +127,7 @@ for crawl_url in enforcement_actions['URL']:
      None
 
 enforcement_actions['Agency'] = agency
+enforcement_actions.head()
 ```
 
 # Step 2: Making the scraper dynamic
@@ -133,17 +136,122 @@ enforcement_actions['Agency'] = agency
 
 * a. Pseudo-Code (PARTNER 2)
 
+1. check if year inputted is < 2013
+  - if <2013, print "Invalid year." (use an if statement here)
+2. Set base url (without the page info), base page=1, and empty lists to be appended with each iteration
+3. Begin a while loop
+  - while loop will continue looping through pages and exit once there are no more pages to scrape
+4. Go through first page, extract soup and all relavant tags
+5. Use for loop to extract each item in the find_all tag lists and append to empty lists created before
+6. Check if date of given item is outside of the range inputted in the function
+  - if it is, exit out of the function
+7. Add 1 to page and repeat
+
 
 * b. Create Dynamic Scraper (PARTNER 2)
 
 ```{python}
+def dynamic_scraper(year, month):
+  #create datetime object from year and month
+  date_obj = datetime(year, month, 1)
 
+  #first confirm year is in range
+  if year < 2013:
+    print("Invalid year. Please enter a year that is 2013 or later.")
+    return 
+  
+  #set base url and first page
+  base_url = "https://oig.hhs.gov/fraud/enforcement/"
+  page = 1
+
+  #set empty lists to store results
+  title = []
+  date = []
+  classification = []
+  links = []
+  title_iter = []
+  classification_iter = []
+  link_iter = []
+
+  #set short url to append to url in loop
+  short_url = 'https://oig.hhs.gov'
+
+  #create soup object from given page
+  while True:
+    url = base_url + "?page=" + str(page)
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    #get out of loop if there is no page
+    if not soup:
+      print(len(date))
+      break
+    
+    #find all necessary tags on given page
+    h2_tags = soup.find_all("h2")[2:]
+    span_tags = soup.find_all("span", class_="text-base-dark padding-right-105")
+    li_tags = soup.find_all("li", 
+      class_="display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1")
+    a_tags = soup.find_all("a")[74:74+len(span_tags)]
+
+    for i in range(len(span_tags)):
+      #turn date string into datetime object
+      full_date = datetime.strptime(span_tags[i].get_text(strip=True), "%B %d, %Y")
+        
+      #stop scraping if date is outside the range
+      if full_date < date_obj:
+        return pd.DataFrame({"Title": title, 
+                            "Date": date,
+                            "Classification": classification, 
+                            "URL": links})
+
+      #extract date and append to date column
+      date.append(span_tags[i].get_text(strip=True))
+
+      #extract data from other tags and append to respective columns
+      title.append(h2_tags[i].get_text(strip=True))
+
+      text = li_tags[i].get_text(strip=True)
+      classification.append(str(text))
+
+      if 'href' in a_tags[i].attrs and a_tags[i]['href']:
+        link = a_tags[i]['href']
+        link = short_url + link
+        links.append(link)  
+
+    page += 1
+      
+    #delay
+    time.sleep(1)
+
+  return pd.DataFrame({"Title": title, 
+                      "Date": date,
+                      "Classification": classification, 
+                      "URL": links})
 ```
+
+```{python}
+#test dynamic scraper
+enforcement_actions_012023 = dynamic_scraper(2023, 1)
+```
+
+```{python}
+#get info on tested function
+print(len(enforcement_actions_012023))
+
+enforcement_actions_012023["Date_obj"] = pd.to_datetime(
+  enforcement_actions_012023["Date"], format="%B %d, %Y")
+
+min_date = min(enforcement_actions_012023["Date_obj"])
+
+enforcement_actions_012023.loc[enforcement_actions_012023["Date_obj"] == min_date]
+```
+
+There are 1,507 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, and url that was scraped for this enforcement action is listed above. 
 
 * c. Test Partner's Code (PARTNER 1)
 
 ```{python}
-
 ```
 
 ## Step 3: Plot data based on scraped data
