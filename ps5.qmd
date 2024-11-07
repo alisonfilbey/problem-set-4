@@ -299,10 +299,24 @@ enforcement_actions_012023.loc[enforcement_actions_012023["Date_obj"] == min_dat
 There are 1,510 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, agency, and url that was scraped for this enforcement action is listed above. 
 
 * c. Test Partner's Code (PARTNER 1)
-
 ```{python}
+#test dynamic scraper
 enforcement_actions_012021 = dynamic_scraper(2021, 1)
 ```
+
+```{python}
+#get info on tested function
+print(len(enforcement_actions_012021))
+
+enforcement_actions_012021["Date_obj"] = pd.to_datetime(
+  enforcement_actions_012021["Date"], format="%B %d, %Y")
+
+min_date = min(enforcement_actions_012021["Date_obj"])
+
+enforcement_actions_012021.loc[enforcement_actions_012021["Date_obj"] == min_date]
+```
+
+There are 2,995 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 4, 2021, and the title, classification, and url that was scraped for this enforcement action is listed above. 
 
 ## Step 3: Plot data based on scraped data
 
