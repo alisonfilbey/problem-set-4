@@ -66,31 +66,32 @@ page and scrape and collect the following into a dataset:
 Collect your output into a tidy dataframe and print its head.
 
 ```{python}
+#Preparing to scrape
 url ='https://oig.hhs.gov/fraud/enforcement/'
 response = requests.get(url)
 soup = BeautifulSoup(response.text, 'lxml')
 
-#Title 
+#Scraping the title
 h2 = soup.find_all('h2')
 title = []
 for h2 in h2:
    title.append(h2.get_text(strip=True))
 title=title[2:22]
 
-#Date
+#Scraping the date
 span = soup.find_all('span', class_='text-base-dark padding-right-105')
 date = []
 for span in span:
    date.append(span.get_text(strip=True))
 
-#Classification
+#Scraping the classification
 listed = soup.find_all('li', class_='display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1')
 classification = []
 for element in listed:
     text = element.get_text(strip=True)
     classification.append(str(text))
 
-#Link
+#Scraping the link 
 a_tags = soup.find_all('a')
 links = []
 for a in a_tags:
@@ -116,11 +117,15 @@ enforcement_actions.head()
 2. Crawling: Then for each enforcement action, click the link and collect the name of the agency involved (e.g., for this link, it would be U.S. Attorney’s Office, Eastern District of Washington). Update your dataframe with the name of the agency and print its head
 
 ```{python}
+#Creating a loop that goes through each URL and scrapes the agency
 agency = []
 for crawl_url in enforcement_actions['URL']:
+#Retreving the URL and finding the Agency span
   response = requests.get(crawl_url)
   soup = BeautifulSoup(response.text, 'lxml')
   span = soup.find('span', string=lambda text: text and 'Agency:' in text)
+#For the agency span, find the test that is next to it and append it
+#Asked chatgpt for help finding a function that would find the next tag next to "Agency"
   if span:
     agency_name = span.find_next_sibling(text=True).strip()
     agency.append(agency_name)
@@ -356,13 +361,38 @@ alt.Chart(enforcement_actions_grouped).mark_line().encode(
 * based on "Criminal and Civil Actions" vs. "State Enforcement Agencies"
 
 ```{python}
+enforcement_actions_012021['Year_Month'] = enforcement_actions_012021['Date_obj'].dt.strftime('%Y-%m')
+
+plot_type = alt.Chart(enforcement_actions_012021, title="Number of Enforcement Actions by Classification").mark_line().transform_filter((alt.datum.Classification == 'Criminal and Civil Actions') | (alt.datum.Classification == 'State Enforcement Agencies')).encode(
+    x=alt.X('Year_Month:O', axis=alt.Axis(title= 'Month and Year')),
+    y=alt.Y('count():Q', axis=alt.Axis(title= 'Number of Enforcement Actions')),
+    color=alt.Color('Classification:O')
+)
+
+plot_type
 
 ```
 
 * based on five topics
 
 ```{python}
+conditions = [
+    ['Agency'].str.contains(['healthcare'], na=False),
+    ['Agency'].str.contains(['finance', 'bank'], na=False),
+    ['Agency'].str.contains(['drugs'], na=False),
+    ['Agency'].str.contains(['bribery'], na=False),
+]
+choices = ["Health Care Fraud", "Financial Fraud", "Drug Enforcement", "Bribery/Corruption"]
+['category'] = np.select(conditions, choices, default='Other')
 
+
+plot_categories = alt.Chart(, title="Number of Enforcement Actions by Criminal and Civil Actions Type").mark_line(filled=True).transform_filter(alt.datum.classification == 'Criminal and Civil Actions').encode(
+    x=alt.X('date:O', axis=alt.Axis(title= 'Month and Year')),
+    y=alt.Y('count:Q', axis=alt.Axis(title= 'Number of Enforcement Actions')),
+    color=alt.Color('category:O'))
+)
+
+plot_categories 
 ```
 
 ## Step 4: Create maps of enforcement activity
@@ -370,7 +400,16 @@ alt.Chart(enforcement_actions_grouped).mark_line().encode(
 ### 1. Map by State (PARTNER 1)
 
 ```{python}
+shapefile = "Data/cb_2018_us_state_500k.shp"
+census_state = gpd.read_file(shapefile)
 
+enforcement_activities_state = enforcement_activities.groupby('state').size()
+enforcement_activities_state_map = census_state.set_index('').join(enforcement_activities_state.set_index(''))
+
+enforcement_activities_state_map.plot(column='count', legend=True)
+plt.title("Number of Enforcement Actions by State")
+plt.axis("off")
+plt.show()
 ```
 
 
