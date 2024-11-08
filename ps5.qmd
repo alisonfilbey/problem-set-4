@@ -50,11 +50,11 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import shapely
-from shapely import Polygon, Point
 import geopandas as gpd
 import time
 from datetime import datetime 
 from concurrent.futures import ThreadPoolExecutor
+import matplotlib.pyplot as plt
 ```
 
 1. (Partner 1) Scraping: Go to the first page of the HHS OIG’s “Enforcement Actions”
@@ -323,7 +323,32 @@ There are 2,995 enforcement actions in the final dataframe. The earliest enforce
 ### 1. Plot the number of enforcement actions over time (PARTNER 2)
 
 ```{python}
+#create year and month variables
+enforcement_actions_012021["year"] = enforcement_actions_012021["Date_obj"].dt.year
+enforcement_actions_012021["month"] = enforcement_actions_012021["Date_obj"].dt.month
 
+#group by yearmonth and calculate number of enforcement actions
+enforcement_actions_grouped = enforcement_actions_012021.groupby(
+  ["year", "month"]).size().reset_index(name="n_enforcements")
+
+#create date variable from month and year
+enforcement_actions_grouped["date"] = pd.to_datetime(
+  enforcement_actions_grouped["year"].astype(str) + 
+  "-" + enforcement_actions_grouped["month"].astype(str) + "-01")
+```
+
+```{python}
+#plot number of enforcements over time
+alt.Chart(enforcement_actions_grouped).mark_line().encode(
+    alt.X("yearmonth(date):T",
+        axis=alt.Axis(
+          title="",
+          labelAngle=45,)),
+    alt.Y("n_enforcements:Q",
+        axis=alt.Axis(title="Number of Enforcement Actions"))
+).properties(
+    height=200,
+    width=500)
 ```
 
 ### 2. Plot the number of enforcement actions categorized: (PARTNER 1)
@@ -352,7 +377,39 @@ There are 2,995 enforcement actions in the final dataframe. The earliest enforce
 ### 2. Map by District (PARTNER 2)
 
 ```{python}
+#import district shapefile
+district_shapefile = "Data/US Attorney Districts Shapefile simplified/geo_export_31250f05-1141-499d-9d2a-48d87472e3a4.shp"
+districts_sp = gpd.read_file(district_shapefile)
+```
 
+```{python}
+#extract us attorney's office enforcements
+district_enforcements = enforcement_actions_012021.loc[
+  enforcement_actions_012021["Agency"].str.startswith("U.S. Attorney's Office")]
+
+#create district name variable
+district_enforcements["judicial_d"] = district_enforcements["Agency"].str.slice(start=24)
+
+#calculate number of enforcements in each district 
+district_enforcements = district_enforcements.groupby(["judicial_d"]).size(
+  ).reset_index(name="n_enforcements")
+
+#merge with district shapefile 
+district_enforcements = pd.merge(districts_sp, district_enforcements, on="judicial_d", how="inner" )
+```
+
+```{python}
+#map number of enforcements per district
+fig, ax = plt.subplots(figsize=(10, 10))
+district_enforcements.plot(column="n_enforcements", 
+                            legend=True, 
+                            ax=ax, 
+                            missing_kwds=dict(color="lightgray"))
+plt.title("Number of Enforcements by US Attorney's Office District")
+plt.axis("off")
+ax.set_xlim(-170, -65)
+ax.set_ylim(0, 75)
+plt.show()
 ```
 
 ## Extra Credit
@@ -360,15 +417,11 @@ There are 2,995 enforcement actions in the final dataframe. The earliest enforce
 ### 1. Merge zip code shapefile with population
 ```{python}
 #import zipcode shapefile
-zipcode_shapefile = "/Users/claireconzelmann/Documents/GitHub/Python2/problem-set-4-alison-and-claire/Data/gz_2010_us_860_00_500k.shp"
+zipcode_shapefile = "Data/gz_2010_us_860_00_500k.shp"
 zipcodes_sp = gpd.read_file(zipcode_shapefile)
 
 #import zipcode population file
-zip_pop = pd.read_csv("/Users/claireconzelmann/Downloads/DECENNIALDHC2020.P1_2024-11-05T221849/DECENNIALDHC2020.P1-Data.csv")
-
-#import district shapefile
-district_shapefile = "/Users/claireconzelmann/Downloads/US Attorney Districts Shapefile simplified_20241105/geo_export_31250f05-1141-499d-9d2a-48d87472e3a4.shp"
-districts_sp = gpd.read_file(district_shapefile)
+zip_pop = pd.read_csv("Data/DECENNIALDHC2020.P1/DECENNIALDHC2020.P1-Data.csv")
 ```
 
 ```{python}
@@ -393,10 +446,31 @@ zipcodes_to_districts = gpd.sjoin(zipcodes_sp,
 zipcodes_to_districts["P1_001N"] = zipcodes_to_districts["P1_001N"].fillna(0).astype(int)
 
 #aggregate zipcode population to districts
-district_pops = zipcodes_to_districts.groupby(["district_n"])["P1_001N"].sum().reset_index()
+district_pops = zipcodes_to_districts.groupby(["abbr"])["P1_001N"].sum().reset_index()
 ```
 
 ### 3. Map the action ratio in each district
 ```{python}
+#merge district populations to district shapefile and enforcements
+district_enforcements = pd.merge(district_enforcements, district_pops,
+  on="abbr", how="inner")
 
+#calculate enforcement ratio
+district_enforcements["enforcmnt_ratio"] = district_enforcements["n_enforcements"
+  ] / district_enforcements["P1_001N"]
+```
+
+
+```{python}
+#map enforcement ratio
+fig, ax = plt.subplots(figsize=(10, 10))
+district_enforcements.plot(column="enforcmnt_ratio", 
+                            legend=True, 
+                            ax=ax, 
+                            missing_kwds=dict(color="lightgray"))
+plt.title("Enforcement Ratio by US Attorney's Office Districts")
+plt.axis("off")
+ax.set_xlim(-170, -65)
+ax.set_ylim(0, 75)
+plt.show()
 ```
