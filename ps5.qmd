@@ -16,6 +16,9 @@ include-before-body:
       breaksymbolleft={},
       breaklines
     }
+output:
+  echo: false
+  eval: false
 ---
 
 ## Submission Steps (10 pts)
@@ -30,7 +33,7 @@ has accepted.
 your initials to indicate your agreement: **AF** **CC**
 5. “I have uploaded the names of anyone else other than my partner and I worked with on
 the problem set here” (1 point)**AF** **CC**
-6. Late coins used this pset: **__** Late coins left after submission: **__**
+6. Late coins used this pset: **0** Late coins left after submission: **4**
 7. Knit your ps5.qmd to an PDF file to make ps5.pdf,
 • The PDF should not be more than 25 pages. Use head() and re-size figures when
 appropriate.
@@ -54,12 +57,9 @@ import geopandas as gpd
 import time
 from datetime import datetime 
 from concurrent.futures import ThreadPoolExecutor
-<<<<<<< Updated upstream
-import matplotlib.pyplot as plt
-=======
 import numpy as np
-import matplotlib as plt
->>>>>>> Stashed changes
+import matplotlib.pyplot as plt
+alt.renderers.enable("png")
 ```
 
 1. (Partner 1) Scraping: Go to the first page of the HHS OIG’s “Enforcement Actions”
@@ -76,27 +76,27 @@ url ='https://oig.hhs.gov/fraud/enforcement/'
 response = requests.get(url)
 soup = BeautifulSoup(response.text, 'lxml')
 
-#Scraping the title
+#Scraping the title and appending it to a list, subsetting to headers we need
 h2 = soup.find_all('h2')
 title = []
 for h2 in h2:
    title.append(h2.get_text(strip=True))
 title=title[2:22]
 
-#Scraping the date
+#Scraping the date and appending it to a list
 span = soup.find_all('span', class_='text-base-dark padding-right-105')
 date = []
 for span in span:
    date.append(span.get_text(strip=True))
 
-#Scraping the classification
+#Scraping the classification and appending it to a list
 listed = soup.find_all('li', class_='display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1')
 classification = []
 for element in listed:
     text = element.get_text(strip=True)
     classification.append(str(text))
 
-#Scraping the link 
+#Scraping the link and appending it to a list, focusing on links we need
 a_tags = soup.find_all('a')
 links = []
 for a in a_tags:
@@ -106,6 +106,7 @@ links=links[74:94]
 short_url = 'https://oig.hhs.gov'
 links = [short_url + link for link in links]
 
+#Creating a dataframe from the lists
 enforcement_actions = {
     'Title': title,
     'Date': date,
@@ -114,7 +115,7 @@ enforcement_actions = {
 }
 
 enforcement_actions = pd.DataFrame(enforcement_actions)
-enforcement_actions.head()
+print(enforcement_actions.head())
 ```
 
 2. Crawling: Then for each enforcement action, click the link and collect the name of the agency involved (e.g., for this link, it would be U.S. Attorney’s Office, Eastern District of Washington). Update your dataframe with the name of the agency and print its head
@@ -128,15 +129,17 @@ for crawl_url in enforcement_actions['URL']:
   soup = BeautifulSoup(response.text, 'lxml')
   span = soup.find('span', string=lambda text: text and 'Agency:' in text)
 #For the agency span, find the test that is next to it and append it
-#Asked chatgpt for help finding a function that would find the next tag next to "Agency"
+#Asked chatgpt for help finding a function that would find the next tag next to 
+# "Agency"
   if span:
     agency_name = span.find_next_sibling(text=True).strip()
     agency.append(agency_name)
   else:
-     None
+    agency_name = None
+    agency.append(agency_name)
 
 enforcement_actions['Agency'] = agency
-enforcement_actions.head()
+print(enforcement_actions.head())
 ```
 
 # Step 2: Making the scraper dynamic
@@ -287,7 +290,6 @@ def dynamic_scraper(year, month):
 ```
 
 ```{python}
-#test dynamic scraper
 enforcement_actions_012023 = dynamic_scraper(2023, 1)
 ```
 
@@ -301,15 +303,19 @@ enforcement_actions_012023["Date_obj"] = pd.to_datetime(
 
 min_date = min(enforcement_actions_012023["Date_obj"])
 
-enforcement_actions_012023.loc[enforcement_actions_012023["Date_obj"] == min_date]
+print(enforcement_actions_012023.loc[enforcement_actions_012023["Date_obj"] == min_date])
 ```
 
-There are 1,510 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, agency, and url that was scraped for this enforcement action is listed above. 
+The number of enforcement actions in the final dataframe is shown above. The earliest enforcement action scraped was from January 3, 2023, and the title, classification, agency, and url that was scraped for this enforcement action is listed above. 
 
 * c. Test Partner's Code (PARTNER 1)
 ```{python}
 #test dynamic scraper
 enforcement_actions_012021 = dynamic_scraper(2021, 1)
+```
+
+```{python}
+enforcement_actions_012021 = pd.read_csv('Data/enforcement_actions_2021_1.csv')
 ```
 
 ```{python}
@@ -321,7 +327,7 @@ enforcement_actions_012021["Date_obj"] = pd.to_datetime(
 
 min_date = min(enforcement_actions_012021["Date_obj"])
 
-enforcement_actions_012021.loc[enforcement_actions_012021["Date_obj"] == min_date]
+print(enforcement_actions_012021.loc[enforcement_actions_012021["Date_obj"] == min_date])
 ```
 
 There are 2,998 enforcement actions in the final dataframe. The earliest enforcement action scraped was from January 4, 2021, and the title, classification, and url that was scraped for this enforcement action is listed above. 
@@ -357,6 +363,8 @@ alt.Chart(enforcement_actions_grouped).mark_line().encode(
 ).properties(
     height=200,
     width=500)
+
+
 ```
 
 ### 2. Plot the number of enforcement actions categorized: (PARTNER 1)
@@ -364,33 +372,53 @@ alt.Chart(enforcement_actions_grouped).mark_line().encode(
 * based on "Criminal and Civil Actions" vs. "State Enforcement Agencies"
 
 ```{python}
-enforcement_actions_012021['Year_Month'] = enforcement_actions_012021['Date_obj'].dt.strftime('%Y-%m')
+#Making a month and year variable
+enforcement_actions_012021["date"] = pd.to_datetime(enforcement_actions_012021["year"].astype(str\
+  ) + "-" + enforcement_actions_012021["month"].astype(str) + "-01")
+```
 
-plot_type = alt.Chart(enforcement_actions_012021, title="Number of Enforcement Actions by Classification").mark_line().transform_filter((alt.datum.Classification == 'Criminal and Civil Actions') | (alt.datum.Classification == 'State Enforcement Agencies')).encode(
-    x=alt.X('Year_Month:O', axis=alt.Axis(title= 'Month and Year')),
+```{python}
+#Creating plot while filetering for criminal and civil actions and state enforcement agencies
+plot1 = alt.Chart(enforcement_actions_012021, title="Number of Enforcement Actions by Classification").mark_line().transform_filter((alt.datum.Classification == 'Criminal and Civil Actions') | (alt.datum.Classification == 'State Enforcement Agencies')).encode(
+    x=alt.X('yearmonth(date):T', axis=alt.Axis(title= 'Month and Year')),
     y=alt.Y('count():Q', axis=alt.Axis(title= 'Number of Enforcement Actions')),
     color=alt.Color('Classification:O')
 )
 
-plot_type
+plot1
 
 ```
 
 * based on five topics
 
 ```{python}
+#Creating the conditions to filter the five categories on 
 conditions = [
-    enforcement_actions_012021['Title'].str.contains('health|doctor|pharm|prescription|hospital|surgeon|nurs|physician|lab|medi|provider|patient|dent|dermatology|podiatrist|COVID-19|care|urolog|pediatric|cardiologist|chiropractor|organ|hospice|radiology|eye|heart|respiratory|ambula|clinic|psych', na=False, case=False),
-    enforcement_actions_012021['Title'].str.contains('finance|bank|social security|business|embezzl|monetary|defraud|tax|rebate|financial|wire fraud|broker|launder', na=False, case=False),
-    enforcement_actions_012021['Title'].str.contains('drug|oxy|opioid|cocaine|heroin|substance', na=False, case=False),
-    enforcement_actions_012021['Title'].str.contains('bribery|kickback', na=False, case=False)
+    enforcement_actions_012021['Title'].str.contains('health|doctor|pharm|prescription|\
+      hospital|surgeon|nurs|physician|lab|medi|provider|patient|dent|dermatology|\
+        podiatrist|COVID-19|care|urolog|pediatric|cardiologist|chiropractor|organ|\
+          hospice|radiology|eye|heart|respiratory|ambula|clinic|psych', na=False,\
+             case=False),
+    enforcement_actions_012021['Title'].str.contains('finance|bank|social security|\
+      business|embezzl|monetary|defraud|tax|rebate|financial|wire fraud|broker|\
+        launder', na=False, case=False),
+    enforcement_actions_012021['Title'].str.contains('drug|oxy|opioid|cocaine|heroin|\
+      substance', na=False, case=False),
+    enforcement_actions_012021['Title'].str.contains('bribery|kickback', na=False, \
+      case=False)
 ]
 
+#Developing the categories and applying the conditions to the dataset
 choices = ["Health Care Fraud", "Financial Fraud", "Drug Enforcement", "Bribery/Corruption"]
 enforcement_actions_012021['category'] = np.select(conditions, choices, default='Other')
+```
 
-plot_categories = alt.Chart(enforcement_actions_012021, title="Number of Enforcement Actions by Criminal and Civil Actions Type").mark_line().transform_filter(alt.datum.Classification == 'Criminal and Civil Actions').encode(
-    x=alt.X('Year_Month:O', axis=alt.Axis(title= 'Month and Year')),
+```{python}
+#Creating the plot by five categories
+plot_categories = alt.Chart(enforcement_actions_012021, title="Number of Enforcement\
+   Actions by Criminal and Civil Actions Type").mark_line().transform_filter(\
+    alt.datum.Classification == 'Criminal and Civil Actions').encode(
+    x=alt.X('yearmonth(date):T', axis=alt.Axis(title= 'Month and Year')),
     y=alt.Y('count():Q', axis=alt.Axis(title= 'Number of Enforcement Actions')),
     color=alt.Color('category:O')
 )
@@ -417,31 +445,32 @@ states =  [
     "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", 
     "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
 ]
+enforcement_actions_012021['Agency'] = enforcement_actions_012021['Agency'].apply(str)
+
 #Asked chatGPT for help indexing so that the state would be in the correct row.
 enforcement_actions_012021["State"]= None 
-for index, row in enforcement_actions_012021.iterrows():
+enforcement_actions_012021_state = enforcement_actions_012021[~enforcement_actions_012021['Agency'].str.contains('district', case=False, na=False)]
+for index, row in enforcement_actions_012021_state.iterrows():
     agency = row['Agency']
     for state in states:
         if state.lower() in agency.lower():  
-            enforcement_actions_012021.at[index, 'State'] = state
+            enforcement_actions_012021_state.at[index, 'State'] = state
             break 
 
-enforcement_actions_state = enforcement_actions_012021.groupby('State')['URL'].count().reset_index()
+enforcement_actions_state = enforcement_actions_012021_state.groupby('State')['URL'].count(\
+  ).reset_index()
 
-enforcement_actions_state_map = census_state.set_index('NAME').join(enforcement_actions_state.set_index('State'))
+enforcement_actions_state_map = census_state.set_index('NAME').join(\
+  enforcement_actions_state.set_index('State'))
+```
 
-fig, ax = plt.subplots(figsize=(5, 5))  # Set the figure size here
-
-# Plot the GeoDataFrame on the specified axis 'ax'
+```{python}
+fig,ax =plt.subplots(figsize=(10,10))
 enforcement_actions_state_map.plot(column='URL', legend=True, ax=ax)
-
-# Set the title for the plot
 ax.set_title("Number of Enforcement Actions by State")
-
-# Turn off the axis
 ax.set_axis_off()
-
-# Show the plot
+ax.set_xlim(-170, -65)
+ax.set_ylim(0, 75)
 plt.show()
 ```
 
@@ -450,7 +479,7 @@ plt.show()
 
 ```{python}
 #import district shapefile
-district_shapefile = "Data/US Attorney Districts Shapefile simplified/geo_export_31250f05-1141-499d-9d2a-48d87472e3a4.shp"
+district_shapefile = "Data/geo_export_31250f05-1141-499d-9d2a-48d87472e3a4.shp"
 districts_sp = gpd.read_file(district_shapefile)
 ```
 
@@ -493,7 +522,7 @@ zipcode_shapefile = "Data/gz_2010_us_860_00_500k.shp"
 zipcodes_sp = gpd.read_file(zipcode_shapefile)
 
 #import zipcode population file
-zip_pop = pd.read_csv("Data/DECENNIALDHC2020.P1/DECENNIALDHC2020.P1-Data.csv")
+zip_pop = pd.read_csv("Data/DECENNIALDHC2020.P1-Data.csv")
 ```
 
 ```{python}
@@ -528,15 +557,16 @@ district_enforcements = pd.merge(district_enforcements, district_pops,
   on="abbr", how="inner")
 
 #calculate enforcement ratio
-district_enforcements["enforcmnt_ratio"] = district_enforcements["n_enforcements"
+district_enforcements["enforcement_ratio"] = district_enforcements["n_enforcements"
   ] / district_enforcements["P1_001N"]
+
 ```
 
 
 ```{python}
 #map enforcement ratio
 fig, ax = plt.subplots(figsize=(10, 10))
-district_enforcements.plot(column="enforcmnt_ratio", 
+district_enforcements.plot(column="enforcement_ratio", 
                             legend=True, 
                             ax=ax, 
                             missing_kwds=dict(color="lightgray"))
